@@ -1,25 +1,152 @@
 import streamlit as st
+import tensorflow as tf
 import librosa
 import numpy as np
-import tensorflow as tf
+import tempfile
+import os
 
-st.set_page_config(page_title="Acoustic Deepfake Detector", page_icon="🎙️", layout="wide")
+# --------------------------------------------------
+# PAGE CONFIGURATION
+# --------------------------------------------------
+
+st.set_page_config(
+    page_title="Acoustic Deepfake Detector",
+    page_icon="🎙️",
+    layout="centered"
+)
+
+# --------------------------------------------------
+# CUSTOM CSS
+# --------------------------------------------------
 
 st.markdown("""
 <style>
-.stApp { background: #f5f7fb; }
-.hero { background: linear-gradient(135deg,#111827,#1d4ed8); padding:40px; border-radius:20px; text-align:center; color:white; margin-bottom:30px; }
-.hero h1 { font-size:42px; margin-bottom:8px; }
-.hero p { font-size:18px; color:#dbeafe; }
-.card { background:white; padding:25px; border-radius:18px; margin-bottom:20px; box-shadow:0 4px 18px rgba(0,0,0,.08); }
-.title { font-size:24px; font-weight:700; margin-bottom:15px; color:#111827; }
-.result-fake { background:#fff1f2; border:2px solid #ef4444; padding:30px; border-radius:18px; text-align:center; }
-.result-real { background:#ecfdf5; border:2px solid #10b981; padding:30px; border-radius:18px; text-align:center; }
-.result { font-size:34px; font-weight:800; }
-.score { font-size:20px; margin-top:10px; }
-.footer { text-align:center; color:#6b7280; padding:30px; }
+
+    /* Main background */
+    .stApp {
+        background: #0b1020;
+    }
+
+    /* Main container */
+    .block-container {
+        max-width: 850px;
+        padding-top: 3rem;
+        padding-bottom: 3rem;
+    }
+
+    /* Title */
+    .title {
+        text-align: center;
+        font-size: 42px;
+        font-weight: 700;
+        color: white;
+        margin-bottom: 8px;
+    }
+
+    .subtitle {
+        text-align: center;
+        font-size: 17px;
+        color: #aab3c5;
+        margin-bottom: 35px;
+    }
+
+    /* Upload box */
+    [data-testid="stFileUploader"] {
+        background: #141b2d;
+        border: 1px solid #2c3650;
+        border-radius: 18px;
+        padding: 20px;
+    }
+
+    /* Analyze button */
+    .stButton > button {
+        width: 100%;
+        height: 52px;
+        border-radius: 12px;
+        border: none;
+        background: #4f7cff;
+        color: white;
+        font-size: 18px;
+        font-weight: 600;
+        margin-top: 15px;
+    }
+
+    .stButton > button:hover {
+        background: #3d68df;
+        color: white;
+    }
+
+    /* Result cards */
+    .result-card {
+        margin-top: 30px;
+        padding: 30px;
+        border-radius: 20px;
+        text-align: center;
+        background: #141b2d;
+        border: 1px solid #2c3650;
+    }
+
+    .real-result {
+        border: 1px solid #22c55e;
+    }
+
+    .fake-result {
+        border: 1px solid #ef4444;
+    }
+
+    .result-title {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .score {
+        font-size: 20px;
+        color: #c7cfdd;
+    }
+
+    .info {
+        text-align: center;
+        color: #7f8aa3;
+        font-size: 14px;
+        margin-top: 25px;
+    }
+
+    /* Hide Streamlit branding */
+    #MainMenu {
+        visibility: hidden;
+    }
+
+    footer {
+        visibility: hidden;
+    }
+
+    header {
+        visibility: hidden;
+    }
+
 </style>
 """, unsafe_allow_html=True)
+
+# --------------------------------------------------
+# TITLE
+# --------------------------------------------------
+
+st.markdown(
+    '<div class="title">🎙️ Acoustic Deepfake Detector</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<div class="subtitle">'
+    'Upload a voice recording to detect whether it is real or AI-generated.'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+# --------------------------------------------------
+# MODEL
+# --------------------------------------------------
 
 MODEL_PATH = "quick_acoustic_deepfake_model.keras"
 
@@ -27,94 +154,168 @@ MODEL_PATH = "quick_acoustic_deepfake_model.keras"
 def load_model():
     return tf.keras.models.load_model(MODEL_PATH)
 
-model = load_model()
+try:
+    model = load_model()
+except Exception as e:
+    st.error("Unable to load the detection model.")
+    st.stop()
+
+# --------------------------------------------------
+# AUDIO FEATURE EXTRACTION
+# --------------------------------------------------
 
 def extract_mfcc(audio_file):
-    audio, sr = librosa.load(audio_file, sr=16000)
-    mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=40)
-    max_len = 300
-    if mfcc.shape[1] < max_len:
-        mfcc = np.pad(mfcc, ((0,0),(0,max_len-mfcc.shape[1])), mode="constant")
-    else:
-        mfcc = mfcc[:, :max_len]
-    return np.expand_dims(np.expand_dims(mfcc, axis=0), axis=-1)
 
-st.markdown("""
-<div class="hero">
-<h1>🎙️ Acoustic Deepfake Detector</h1>
-<p>AI-Powered Voice Authenticity Analysis using MFCC and CNN</p>
-</div>
-""", unsafe_allow_html=True)
+    with tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=os.path.splitext(audio_file.name)[1]
+    ) as temp_file:
 
-st.markdown("""
-<div class="card">
-<div class="title">🔍 Detect Fake or AI-Generated Voices</div>
-<p>Upload an audio file and the deep learning model will analyze its acoustic characteristics and classify the speech as <b>Bonafide</b> or <b>Spoof</b>.</p>
-</div>
-""", unsafe_allow_html=True)
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.markdown('<div class="card"><div class="title">📁 Upload Audio</div>', unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("Choose an audio file", type=["wav","flac","mp3"])
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with col2:
-    st.markdown("""
-    <div class="card">
-    <div class="title">🧠 Detection Pipeline</div>
-    <p>🎵 Audio Input</p><p>↓</p><p>🔊 Preprocessing</p><p>↓</p>
-    <p>📊 MFCC Feature Extraction</p><p>↓</p><p>🧠 CNN Classification</p><p>↓</p>
-    <p>✅ Bonafide / ❌ Spoof</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-if uploaded_file:
-    st.markdown('<div class="card"><div class="title">🔊 Audio Preview</div>', unsafe_allow_html=True)
-    st.audio(uploaded_file)
-    st.markdown("</div>", unsafe_allow_html=True)
+        temp_file.write(audio_file.getbuffer())
+        temp_path = temp_file.name
 
     try:
-        features = extract_mfcc(uploaded_file)
-        prediction = model.predict(features, verbose=0)[0][0]
 
-        if prediction >= 0.5:
-            confidence = prediction * 100
-            st.markdown(f"""
-            <div class="result-fake">
-            <div class="result">❌ SPOOF / FAKE VOICE</div>
-            <div class="score">Detection Score: <b>{confidence:.2f}%</b></div>
-            <p>The model classified this audio as spoofed or synthetic speech.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        audio, sr = librosa.load(
+            temp_path,
+            sr=16000,
+            mono=True
+        )
+
+        # Extract MFCC
+        mfcc = librosa.feature.mfcc(
+            y=audio,
+            sr=16000,
+            n_mfcc=40
+        )
+
+        # Make all inputs the same size
+        max_len = 300
+
+        if mfcc.shape[1] < max_len:
+
+            mfcc = np.pad(
+                mfcc,
+                ((0, 0), (0, max_len - mfcc.shape[1])),
+                mode="constant"
+            )
+
         else:
-            confidence = (1-prediction) * 100
-            st.markdown(f"""
-            <div class="result-real">
-            <div class="result">✅ BONAFIDE / REAL VOICE</div>
-            <div class="score">Detection Score: <b>{confidence:.2f}%</b></div>
-            <p>The model classified this audio as bonafide speech.</p>
-            </div>
-            """, unsafe_allow_html=True)
 
-        st.markdown('<br><div class="card"><div class="title">📊 Analysis Details</div></div>', unsafe_allow_html=True)
-        a,b,c = st.columns(3)
-        a.metric("Sampling Rate","16 kHz")
-        b.metric("MFCC Features","40")
-        c.metric("Classifier","CNN")
-    except Exception:
-        st.error("Unable to process this audio file.")
+            mfcc = mfcc[:, :max_len]
 
-st.markdown("""
-<div class="card">
-<div class="title">📌 About the Project</div>
-<b>Dataset:</b> ASVspoof 2019 Logical Access (LA)<br><br>
-<b>Feature Extraction:</b> MFCC<br><br>
-<b>Deep Learning:</b> Convolutional Neural Network (CNN)<br><br>
-<b>Classification:</b> Bonafide vs Spoof<br><br>
-<b>Purpose:</b> Detection of AI-generated and manipulated speech
-</div>
-""", unsafe_allow_html=True)
+        # Shape:
+        # (40, 300) -> (1, 40, 300, 1)
 
-st.markdown('<div class="footer"><b>Acoustic Deepfake and Voice Cloning Discriminator</b><br>Machine Learning PBL Project</div>', unsafe_allow_html=True)
+        mfcc = np.expand_dims(mfcc, axis=-1)
+        mfcc = np.expand_dims(mfcc, axis=0)
+
+        return mfcc
+
+    finally:
+
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+# --------------------------------------------------
+# FILE UPLOAD
+# --------------------------------------------------
+
+uploaded_file = st.file_uploader(
+    "Upload your audio file",
+    type=["wav", "flac", "mp3"],
+    help="Supported formats: WAV, FLAC and MP3"
+)
+
+# --------------------------------------------------
+# AUDIO PREVIEW
+# --------------------------------------------------
+
+if uploaded_file is not None:
+
+    st.audio(
+        uploaded_file,
+        format="audio/wav"
+    )
+
+    st.markdown("")
+
+    # --------------------------------------------------
+    # ANALYZE BUTTON
+    # --------------------------------------------------
+
+    if st.button("🔍 Analyze Voice"):
+
+        with st.spinner("Analyzing voice..."):
+
+            try:
+
+                # Extract features
+                features = extract_mfcc(uploaded_file)
+
+                # Model prediction
+                prediction = model.predict(
+                    features,
+                    verbose=0
+                )[0][0]
+
+                # --------------------------------------------------
+                # RESULT
+                # --------------------------------------------------
+
+                if prediction >= 0.5:
+
+                    score = prediction * 100
+
+                    st.markdown(
+                        f"""
+                        <div class="result-card fake-result">
+
+                            <div class="result-title">
+                                🔴 SPOOF / FAKE VOICE
+                            </div>
+
+                            <div class="score">
+                                Detection Score: <b>{score:.2f}%</b>
+                            </div>
+
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                else:
+
+                    score = (1 - prediction) * 100
+
+                    st.markdown(
+                        f"""
+                        <div class="result-card real-result">
+
+                            <div class="result-title">
+                                🟢 BONAFIDE / REAL VOICE
+                            </div>
+
+                            <div class="score">
+                                Detection Score: <b>{score:.2f}%</b>
+                            </div>
+
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+            except Exception as e:
+
+                st.error(
+                    f"Error while analyzing the audio: {str(e)}"
+                )
+
+# --------------------------------------------------
+# BOTTOM TEXT
+# --------------------------------------------------
+
+st.markdown(
+    '<div class="info">Upload an audio file and click Analyze Voice.</div>',
+    unsafe_allow_html=True
+)
