@@ -21,7 +21,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-MODEL_PATH = "/content/drive/MyDrive/acoustic_deepfake_project/quick_acoustic_deepfake_model.keras"
+MODEL_PATH = "quick_acoustic_deepfake_model.keras"
 
 @st.cache_resource
 def load_model():
