@@ -265,52 +265,27 @@ if uploaded_file is not None:
 
                 if prediction >= 0.5:
 
-                    score = prediction * 100
+    score = prediction * 100
 
-                    st.markdown(
-                        f"""
-                        <div class="result-card fake-result">
+    st.markdown(
+        f'<div class="result-card fake-result">'
+        f'<div class="result-title">🔴 SPOOF / FAKE VOICE</div>'
+        f'<div class="score">Detection Score: <b>{score:.2f}%</b></div>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
-                            <div class="result-title">
-                                🔴 SPOOF / FAKE VOICE
-                            </div>
+else:
 
-                            <div class="score">
-                                Detection Score: <b>{score:.2f}%</b>
-                            </div>
+    score = (1 - prediction) * 100
 
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-
-                else:
-
-                    score = (1 - prediction) * 100
-
-                    st.markdown(
-                        f"""
-                        <div class="result-card real-result">
-
-                            <div class="result-title">
-                                🟢 BONAFIDE / REAL VOICE
-                            </div>
-
-                            <div class="score">
-                                Detection Score: <b>{score:.2f}%</b>
-                            </div>
-
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-
-            except Exception as e:
-
-                st.error(
-                    f"Error while analyzing the audio: {str(e)}"
-                )
-
+    st.markdown(
+        f'<div class="result-card real-result">'
+        f'<div class="result-title">🟢 BONAFIDE / REAL VOICE</div>'
+        f'<div class="score">Detection Score: <b>{score:.2f}%</b></div>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 # --------------------------------------------------
 # BOTTOM TEXT
 # --------------------------------------------------
