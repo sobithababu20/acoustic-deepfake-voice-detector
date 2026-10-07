@@ -157,7 +157,7 @@ st.markdown(
 # MODEL
 # =========================================================
 
-MODEL_PATH = "quick_acoustic_deepfake_model.keras"
+MODEL_PATH = "acoustic_deepfake_balanced_model_small.keras"
 
 
 @st.cache_resource
