@@ -156,22 +156,33 @@ st.markdown(
 # =========================================================
 # MODEL
 # =========================================================
+# =========================================================
+# MODEL
+# =========================================================
 
 MODEL_PATH = "acoustic_deepfake_balanced_model_small.keras"
 
 
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model(MODEL_PATH)
+    loaded_model = tf.keras.models.load_model(MODEL_PATH)
+    return loaded_model
 
 
 try:
     model = load_model()
 
-except Exception:
-    st.error("Unable to load the detection model.")
-    st.stop()
+    # Display model information for verification
+    st.sidebar.success("✅ New trained model loaded")
+    st.sidebar.write("Model file:")
+    st.sidebar.code(MODEL_PATH)
+    st.sidebar.write("Input shape:")
+    st.sidebar.code(str(model.input_shape))
 
+except Exception as e:
+    st.error("Unable to load the detection model.")
+    st.error(str(e))
+    st.stop()
 # =========================================================
 # MFCC FEATURE EXTRACTION
 # =========================================================
